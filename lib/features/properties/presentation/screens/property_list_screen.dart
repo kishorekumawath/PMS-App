@@ -16,6 +16,7 @@ class PropertyListScreen extends StatelessWidget {
         centerTitle: false,
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab-properties',
         onPressed: () =>
             Navigator.pushNamed(context, AppRoutes.propertyAdd),
         child: const Icon(Icons.add),

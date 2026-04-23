@@ -21,6 +21,7 @@ class DatabaseHelper {
       path,
       version: DbConstants.dbVersion,
       onCreate: _onCreate,
+      onOpen: (db) => db.execute('PRAGMA foreign_keys = ON'),
     );
   }
 

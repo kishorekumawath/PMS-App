@@ -6,6 +6,10 @@ import 'features/properties/domain/entities/property.dart';
 import 'features/properties/presentation/bloc/property_bloc.dart';
 import 'features/properties/presentation/screens/property_detail_screen.dart';
 import 'features/properties/presentation/screens/property_form_screen.dart';
+import 'features/tenants/domain/entities/tenant.dart';
+import 'features/tenants/presentation/bloc/tenant_bloc.dart';
+import 'features/tenants/presentation/screens/tenant_detail_screen.dart';
+import 'features/tenants/presentation/screens/tenant_form_screen.dart';
 import 'injection.dart';
 import 'router/app_router.dart';
 import 'shell/main_shell.dart';
@@ -26,6 +30,9 @@ class PmsApp extends StatelessWidget {
         BlocProvider<PropertyBloc>(
           create: (_) => getIt<PropertyBloc>()..add(const LoadProperties()),
         ),
+        BlocProvider<TenantBloc>(
+          create: (_) => getIt<TenantBloc>()..add(const LoadTenants()),
+        ),
       ],
       child: MaterialApp(
         title: 'PMS',
@@ -37,9 +44,9 @@ class PmsApp extends StatelessWidget {
         onGenerateRoute: (settings) {
           switch (settings.name) {
             case AppRoutes.home:
-              return MaterialPageRoute(
-                  builder: (_) => const MainShell());
+              return MaterialPageRoute(builder: (_) => const MainShell());
 
+            // ── Properties ──────────────────────────────────────────
             case AppRoutes.propertyAdd:
               return MaterialPageRoute(
                   builder: (_) => const PropertyFormScreen());
@@ -54,9 +61,23 @@ class PmsApp extends StatelessWidget {
               return MaterialPageRoute(
                   builder: (_) => PropertyDetailScreen(property: property));
 
-            default:
+            // ── Tenants ─────────────────────────────────────────────
+            case AppRoutes.tenantAdd:
               return MaterialPageRoute(
-                  builder: (_) => const MainShell());
+                  builder: (_) => const TenantFormScreen());
+
+            case AppRoutes.tenantEdit:
+              final tenant = settings.arguments as Tenant;
+              return MaterialPageRoute(
+                  builder: (_) => TenantFormScreen(tenant: tenant));
+
+            case AppRoutes.tenantDetail:
+              final tenant = settings.arguments as Tenant;
+              return MaterialPageRoute(
+                  builder: (_) => TenantDetailScreen(tenant: tenant));
+
+            default:
+              return MaterialPageRoute(builder: (_) => const MainShell());
           }
         },
       ),
