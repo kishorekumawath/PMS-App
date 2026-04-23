@@ -23,6 +23,15 @@ import 'features/tenants/domain/usecases/get_all_tenants.dart';
 import 'features/tenants/domain/usecases/update_tenant.dart';
 import 'features/tenants/presentation/bloc/tenant_bloc.dart';
 
+// Payments
+import 'features/payments/data/datasources/payment_local_datasource.dart';
+import 'features/payments/data/repositories/payment_repository_impl.dart';
+import 'features/payments/domain/repositories/payment_repository.dart';
+import 'features/payments/domain/usecases/delete_payment.dart';
+import 'features/payments/domain/usecases/get_all_payments.dart';
+import 'features/payments/domain/usecases/record_payment.dart';
+import 'features/payments/presentation/bloc/payment_bloc.dart';
+
 final GetIt getIt = GetIt.instance;
 
 Future<void> configureDependencies() async {
@@ -74,6 +83,24 @@ Future<void> configureDependencies() async {
       delete: getIt(),
       assign: getIt(),
       unassign: getIt(),
+    ),
+  );
+
+  // ── Payments ──────────────────────────────────────────────────────
+  getIt.registerLazySingleton<PaymentLocalDatasource>(
+    () => PaymentLocalDatasource(getIt()),
+  );
+  getIt.registerLazySingleton<PaymentRepository>(
+    () => PaymentRepositoryImpl(getIt()),
+  );
+  getIt.registerLazySingleton(() => GetAllPayments(getIt()));
+  getIt.registerLazySingleton(() => RecordPayment(getIt()));
+  getIt.registerLazySingleton(() => DeletePayment(getIt()));
+  getIt.registerFactory(
+    () => PaymentBloc(
+      getAll: getIt(),
+      record: getIt(),
+      delete: getIt(),
     ),
   );
 }

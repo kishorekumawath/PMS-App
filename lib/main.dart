@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'core/theme/app_theme.dart';
+import 'features/payments/presentation/bloc/payment_bloc.dart';
+import 'features/payments/presentation/screens/record_payment_screen.dart';
 import 'features/properties/domain/entities/property.dart';
 import 'features/properties/presentation/bloc/property_bloc.dart';
 import 'features/properties/presentation/screens/property_detail_screen.dart';
@@ -32,6 +34,9 @@ class PmsApp extends StatelessWidget {
         ),
         BlocProvider<TenantBloc>(
           create: (_) => getIt<TenantBloc>()..add(const LoadTenants()),
+        ),
+        BlocProvider<PaymentBloc>(
+          create: (_) => getIt<PaymentBloc>()..add(const LoadPayments()),
         ),
       ],
       child: MaterialApp(
@@ -75,6 +80,11 @@ class PmsApp extends StatelessWidget {
               final tenant = settings.arguments as Tenant;
               return MaterialPageRoute(
                   builder: (_) => TenantDetailScreen(tenant: tenant));
+
+            // ── Payments ─────────────────────────────────────────────
+            case AppRoutes.recordPayment:
+              return MaterialPageRoute(
+                  builder: (_) => const RecordPaymentScreen());
 
             default:
               return MaterialPageRoute(builder: (_) => const MainShell());
