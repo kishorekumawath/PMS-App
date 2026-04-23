@@ -1,9 +1,9 @@
-class DatabaseException implements Exception {
+class CacheException implements Exception {
   final String message;
-  const DatabaseException(this.message);
+  const CacheException(this.message);
 
   @override
-  String toString() => 'DatabaseException: $message';
+  String toString() => 'CacheException: $message';
 }
 
 class NotFoundException implements Exception {

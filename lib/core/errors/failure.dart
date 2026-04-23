@@ -8,8 +8,8 @@ sealed class Failure extends Equatable {
   List<Object?> get props => [message];
 }
 
-class DatabaseFailure extends Failure {
-  const DatabaseFailure(super.message);
+class CacheFailure extends Failure {
+  const CacheFailure(super.message);
 }
 
 class NotFoundFailure extends Failure {
