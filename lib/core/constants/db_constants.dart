@@ -1,6 +1,6 @@
 class DbConstants {
   static const dbName = 'pms.db';
-  static const dbVersion = 1;
+  static const dbVersion = 2;
 
   static const propertiesTable = 'properties';
   static const tenantsTable = 'tenants';

@@ -21,6 +21,7 @@ class DatabaseHelper {
       path,
       version: DbConstants.dbVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
       onOpen: (db) => db.execute('PRAGMA foreign_keys = ON'),
     );
   }
@@ -52,6 +53,23 @@ class DatabaseHelper {
       )
     ''');
 
+    await _createPaymentsTable(db);
+  }
+
+  // v1 → v2: recreate payments with ON DELETE CASCADE on both FK columns
+  // so deleting a tenant or property also removes their payments.
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+          'ALTER TABLE ${DbConstants.paymentsTable} RENAME TO payments_backup');
+      await _createPaymentsTable(db);
+      await db.execute(
+          'INSERT INTO ${DbConstants.paymentsTable} SELECT * FROM payments_backup');
+      await db.execute('DROP TABLE payments_backup');
+    }
+  }
+
+  Future<void> _createPaymentsTable(Database db) async {
     await db.execute('''
       CREATE TABLE ${DbConstants.paymentsTable} (
         ${DbConstants.colId} TEXT PRIMARY KEY,
@@ -64,9 +82,11 @@ class DatabaseHelper {
         ${DbConstants.colNotes} TEXT,
         ${DbConstants.colCreatedAt} TEXT NOT NULL,
         FOREIGN KEY (${DbConstants.colTenantId})
-          REFERENCES ${DbConstants.tenantsTable}(${DbConstants.colId}),
+          REFERENCES ${DbConstants.tenantsTable}(${DbConstants.colId})
+          ON DELETE CASCADE,
         FOREIGN KEY (${DbConstants.colPropertyId})
           REFERENCES ${DbConstants.propertiesTable}(${DbConstants.colId})
+          ON DELETE CASCADE
       )
     ''');
   }
