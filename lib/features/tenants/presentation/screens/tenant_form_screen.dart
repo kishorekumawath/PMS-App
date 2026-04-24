@@ -83,6 +83,7 @@ class _TenantFormScreenState extends State<TenantFormScreen> {
           name: _nameController.text.trim(),
           email: _emailController.text.trim(),
           phone: _phoneController.text.trim(),
+          propertyId: _selectedPropertyId,
         ),
       ));
     }

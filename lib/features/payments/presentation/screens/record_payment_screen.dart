@@ -62,11 +62,21 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
       _selectedTenantId = tenantId;
       if (tenantId == null) {
         _resolvedPropertyId = null;
+        _amountController.clear();
         return;
       }
-      final tenant =
-          tenants.where((t) => t.id == tenantId).firstOrNull;
+      final tenant = tenants.where((t) => t.id == tenantId).firstOrNull;
       _resolvedPropertyId = tenant?.propertyId;
+
+      // Pre-fill amount from the property's monthly rent.
+      if (_resolvedPropertyId != null) {
+        final property =
+            properties.where((p) => p.id == _resolvedPropertyId).firstOrNull;
+        if (property != null) {
+          _amountController.text =
+              property.rentAmount.toStringAsFixed(0);
+        }
+      }
     });
   }
 
@@ -181,12 +191,15 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Amount.
+                  // Amount — pre-filled from property rent, still editable.
                   TextFormField(
                     controller: _amountController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Amount (₹)',
-                      prefixIcon: Icon(Icons.currency_rupee),
+                      prefixIcon: const Icon(Icons.currency_rupee),
+                      helperText: _resolvedPropertyId != null
+                          ? 'Auto-filled from monthly rent — edit to override'
+                          : null,
                     ),
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),

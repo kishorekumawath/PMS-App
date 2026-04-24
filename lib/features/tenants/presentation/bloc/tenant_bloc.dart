@@ -58,7 +58,13 @@ class TenantBloc extends Bloc<TenantEvent, TenantState> {
 
   Future<void> _onAdd(AddTenantEvent event, Emitter<TenantState> emit) async {
     try {
-      await _add(event.params);
+      final newId = await _add(event.params);
+      if (event.params.propertyId != null) {
+        await _assign(AssignTenantToPropertyParams(
+          tenantId: newId,
+          propertyId: event.params.propertyId!,
+        ));
+      }
       await _reload(emit);
     } catch (e) {
       emit(TenantError(e.toString()));

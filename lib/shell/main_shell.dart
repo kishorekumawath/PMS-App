@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../core/constants/app_strings.dart';
+import '../features/dashboard/presentation/bloc/dashboard_bloc.dart';
 import '../features/dashboard/presentation/screens/dashboard_screen.dart';
+import '../features/payments/presentation/bloc/payment_bloc.dart';
 import '../features/payments/presentation/screens/payment_list_screen.dart';
 import '../features/properties/presentation/bloc/property_bloc.dart';
 import '../features/properties/presentation/screens/property_list_screen.dart';
@@ -19,9 +21,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
-  // Prevent cross-sync loops:
-  // _syncingProperties: PropertyBloc is being refreshed because a tenant op ran.
-  // _syncingTenants:    TenantBloc is being refreshed because a property op ran.
+  // Guards for the Property ↔ Tenant cross-sync loop prevention.
   bool _syncingProperties = false;
   bool _syncingTenants = false;
 
@@ -36,7 +36,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     return MultiBlocListener(
       listeners: [
-        // When a tenant operation completes → sync properties.
+        // Tenant op completed → refresh Properties + Dashboard.
         BlocListener<TenantBloc, TenantState>(
           listenWhen: (prev, curr) =>
               prev is! TenantInitial && curr is TenantLoaded,
@@ -47,9 +47,10 @@ class _MainShellState extends State<MainShell> {
             } else {
               _syncingTenants = false;
             }
+            ctx.read<DashboardBloc>().add(const LoadDashboard());
           },
         ),
-        // When a property operation completes → sync tenants.
+        // Property op completed → refresh Tenants + Dashboard.
         BlocListener<PropertyBloc, PropertyState>(
           listenWhen: (prev, curr) =>
               prev is! PropertyInitial && curr is PropertyLoaded,
@@ -60,6 +61,15 @@ class _MainShellState extends State<MainShell> {
             } else {
               _syncingProperties = false;
             }
+            ctx.read<DashboardBloc>().add(const LoadDashboard());
+          },
+        ),
+        // Payment op completed → refresh Dashboard only.
+        BlocListener<PaymentBloc, PaymentState>(
+          listenWhen: (prev, curr) =>
+              prev is! PaymentInitial && curr is PaymentLoaded,
+          listener: (ctx, _) {
+            ctx.read<DashboardBloc>().add(const LoadDashboard());
           },
         ),
       ],

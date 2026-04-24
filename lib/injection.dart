@@ -23,6 +23,10 @@ import 'features/tenants/domain/usecases/get_all_tenants.dart';
 import 'features/tenants/domain/usecases/update_tenant.dart';
 import 'features/tenants/presentation/bloc/tenant_bloc.dart';
 
+// Dashboard
+import 'features/dashboard/domain/usecases/get_dashboard_stats.dart';
+import 'features/dashboard/presentation/bloc/dashboard_bloc.dart';
+
 // Payments
 import 'features/payments/data/datasources/payment_local_datasource.dart';
 import 'features/payments/data/repositories/payment_repository_impl.dart';
@@ -102,5 +106,13 @@ Future<void> configureDependencies() async {
       record: getIt(),
       delete: getIt(),
     ),
+  );
+
+  // ── Dashboard ─────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+    () => GetDashboardStats(getIt(), getIt()),
+  );
+  getIt.registerFactory(
+    () => DashboardBloc(getStats: getIt()),
   );
 }

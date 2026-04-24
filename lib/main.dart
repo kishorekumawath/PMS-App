@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'core/theme/app_theme.dart';
+import 'features/dashboard/presentation/bloc/dashboard_bloc.dart';
 import 'features/payments/presentation/bloc/payment_bloc.dart';
 import 'features/payments/presentation/screens/record_payment_screen.dart';
 import 'features/properties/domain/entities/property.dart';
@@ -37,6 +38,9 @@ class PmsApp extends StatelessWidget {
         ),
         BlocProvider<PaymentBloc>(
           create: (_) => getIt<PaymentBloc>()..add(const LoadPayments()),
+        ),
+        BlocProvider<DashboardBloc>(
+          create: (_) => getIt<DashboardBloc>()..add(const LoadDashboard()),
         ),
       ],
       child: MaterialApp(
