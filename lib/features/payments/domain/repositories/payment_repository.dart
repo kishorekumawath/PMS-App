@@ -4,5 +4,6 @@ abstract interface class PaymentRepository {
   Future<List<Payment>> getAllPayments();
   Future<List<Payment>> getPaymentsForTenant(String tenantId);
   Future<void> recordPayment(Payment payment);
+  Future<void> markAsPaid(String id);
   Future<void> deletePayment(String id);
 }

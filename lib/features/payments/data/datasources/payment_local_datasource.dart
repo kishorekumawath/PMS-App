@@ -47,6 +47,23 @@ class PaymentLocalDatasource {
     }
   }
 
+  Future<void> markAsPaid(String id, DateTime paidDate) async {
+    try {
+      final db = await _dbHelper.database;
+      await db.update(
+        'payments',
+        {
+          'status': 'paid',
+          'paid_date': paidDate.toIso8601String(),
+        },
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    } catch (e) {
+      throw CacheException(e.toString());
+    }
+  }
+
   Future<void> deletePayment(String id) async {
     try {
       final db = await _dbHelper.database;

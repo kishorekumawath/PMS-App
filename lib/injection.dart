@@ -33,6 +33,7 @@ import 'features/payments/data/repositories/payment_repository_impl.dart';
 import 'features/payments/domain/repositories/payment_repository.dart';
 import 'features/payments/domain/usecases/delete_payment.dart';
 import 'features/payments/domain/usecases/get_all_payments.dart';
+import 'features/payments/domain/usecases/mark_payment_as_paid.dart';
 import 'features/payments/domain/usecases/record_payment.dart';
 import 'features/payments/presentation/bloc/payment_bloc.dart';
 
@@ -100,11 +101,13 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton(() => GetAllPayments(getIt()));
   getIt.registerLazySingleton(() => RecordPayment(getIt()));
   getIt.registerLazySingleton(() => DeletePayment(getIt()));
+  getIt.registerLazySingleton(() => MarkPaymentAsPaid(getIt()));
   getIt.registerFactory(
     () => PaymentBloc(
       getAll: getIt(),
       record: getIt(),
       delete: getIt(),
+      markPaid: getIt(),
     ),
   );
 

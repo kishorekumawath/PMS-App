@@ -38,6 +38,15 @@ class PaymentRepositoryImpl implements PaymentRepository {
   }
 
   @override
+  Future<void> markAsPaid(String id) async {
+    try {
+      await _datasource.markAsPaid(id, DateTime.now());
+    } on CacheException catch (e) {
+      throw CacheFailure(e.message);
+    }
+  }
+
+  @override
   Future<void> deletePayment(String id) async {
     try {
       await _datasource.deletePayment(id);

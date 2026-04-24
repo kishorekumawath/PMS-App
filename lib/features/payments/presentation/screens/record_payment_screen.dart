@@ -25,10 +25,10 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
   String? _selectedTenantId;
   DateTime? _dueDate;
   DateTime? _paidDate;
+  bool _isSubmitting = false;
 
   final _dateFmt = DateFormat('dd MMM yyyy');
 
-  // Resolved from tenant selection.
   String? _resolvedPropertyId;
 
   @override
@@ -68,13 +68,11 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
       final tenant = tenants.where((t) => t.id == tenantId).firstOrNull;
       _resolvedPropertyId = tenant?.propertyId;
 
-      // Pre-fill amount from the property's monthly rent.
       if (_resolvedPropertyId != null) {
         final property =
             properties.where((p) => p.id == _resolvedPropertyId).firstOrNull;
         if (property != null) {
-          _amountController.text =
-              property.rentAmount.toStringAsFixed(0);
+          _amountController.text = property.rentAmount.toStringAsFixed(0);
         }
       }
     });
@@ -91,11 +89,12 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
     if (_resolvedPropertyId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text(
-                'Selected tenant has no assigned property.')),
+            content: Text('Selected tenant has no assigned property.')),
       );
       return;
     }
+
+    setState(() => _isSubmitting = true);
 
     context.read<PaymentBloc>().add(
           RecordPaymentEvent(
@@ -119,177 +118,202 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return BlocBuilder<TenantBloc, TenantState>(
-      builder: (context, tenantState) {
-        final tenants = tenantState is TenantLoaded
-            ? tenantState.tenants.where((t) => t.isAssigned).toList()
-            : <Tenant>[];
+    return BlocListener<PaymentBloc, PaymentState>(
+      listenWhen: (_, curr) => curr is PaymentError,
+      listener: (ctx, state) {
+        setState(() => _isSubmitting = false);
+        if (state is PaymentError) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+          );
+        }
+      },
+      child: BlocBuilder<TenantBloc, TenantState>(
+        builder: (context, tenantState) {
+          final tenants = tenantState is TenantLoaded
+              ? tenantState.tenants.where((t) => t.isAssigned).toList()
+              : <Tenant>[];
 
-        final propertyState = context.watch<PropertyBloc>().state;
-        final properties = propertyState is PropertyLoaded
-            ? propertyState.properties
-            : <Property>[];
+          final propertyState = context.watch<PropertyBloc>().state;
+          final properties = propertyState is PropertyLoaded
+              ? propertyState.properties
+              : <Property>[];
 
-        final resolvedPropertyName = _resolvedPropertyId != null
-            ? properties
-                .where((p) => p.id == _resolvedPropertyId)
-                .firstOrNull
-                ?.name
-            : null;
+          final resolvedPropertyName = _resolvedPropertyId != null
+              ? properties
+                  .where((p) => p.id == _resolvedPropertyId)
+                  .firstOrNull
+                  ?.name
+              : null;
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Record Payment'),
-            centerTitle: false,
-          ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Tenant dropdown — only assigned tenants.
-                  DropdownButtonFormField<String?>(
-                    key: ValueKey(_selectedTenantId),
-                    initialValue: _selectedTenantId,
-                    decoration: const InputDecoration(
-                      labelText: 'Tenant',
-                      prefixIcon: Icon(Icons.person_outline),
-                    ),
-                    hint: const Text('Select tenant'),
-                    items: tenants
-                        .map((t) => DropdownMenuItem<String?>(
-                              value: t.id,
-                              child: Text(t.name,
-                                  overflow: TextOverflow.ellipsis),
-                            ))
-                        .toList(),
-                    onChanged: (id) =>
-                        _onTenantChanged(id, tenants, properties),
-                    validator: (v) =>
-                        v == null ? 'Please select a tenant' : null,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Auto-filled property.
-                  InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: 'Property',
-                      prefixIcon: const Icon(Icons.home_work_outlined),
-                      fillColor: colorScheme.surfaceContainerHighest
-                          .withValues(alpha: 0.5),
-                    ),
-                    child: Text(
-                      resolvedPropertyName ?? '— auto-filled from tenant —',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: resolvedPropertyName != null
-                                ? null
-                                : colorScheme.outline,
-                          ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Amount — pre-filled from property rent, still editable.
-                  TextFormField(
-                    controller: _amountController,
-                    decoration: InputDecoration(
-                      labelText: 'Amount (₹)',
-                      prefixIcon: const Icon(Icons.currency_rupee),
-                      helperText: _resolvedPropertyId != null
-                          ? 'Auto-filled from monthly rent — edit to override'
-                          : null,
-                    ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    validator: Validators.positiveAmount,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Due date picker.
-                  InkWell(
-                    onTap: () =>
-                        _pickDate(context, isPaidDate: false),
-                    borderRadius: BorderRadius.circular(12),
-                    child: InputDecorator(
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Record Payment'),
+              centerTitle: false,
+            ),
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    DropdownButtonFormField<String?>(
+                      key: ValueKey(_selectedTenantId),
+                      initialValue: _selectedTenantId,
                       decoration: const InputDecoration(
-                        labelText: 'Due Date',
-                        prefixIcon: Icon(Icons.calendar_today_outlined),
+                        labelText: 'Tenant',
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                      hint: const Text('Select tenant'),
+                      items: tenants
+                          .map((t) => DropdownMenuItem<String?>(
+                                value: t.id,
+                                child: Text(t.name,
+                                    overflow: TextOverflow.ellipsis),
+                              ))
+                          .toList(),
+                      onChanged: (id) =>
+                          _onTenantChanged(id, tenants, properties),
+                      validator: (v) =>
+                          v == null ? 'Please select a tenant' : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Auto-filled property.
+                    InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Property',
+                        prefixIcon: const Icon(Icons.home_work_outlined),
+                        fillColor: colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.5),
                       ),
                       child: Text(
-                        _dueDate != null
-                            ? _dateFmt.format(_dueDate!)
-                            : 'Tap to select',
+                        resolvedPropertyName ?? '— auto-filled from tenant —',
                         style:
                             Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: _dueDate != null
+                                  color: resolvedPropertyName != null
                                       ? null
                                       : colorScheme.outline,
                                 ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // Paid date picker (optional).
-                  InkWell(
-                    onTap: () =>
-                        _pickDate(context, isPaidDate: true),
-                    borderRadius: BorderRadius.circular(12),
-                    child: InputDecorator(
+                    // Amount — pre-filled from property rent, still editable.
+                    TextFormField(
+                      controller: _amountController,
                       decoration: InputDecoration(
-                        labelText: 'Paid Date (optional)',
-                        prefixIcon:
-                            const Icon(Icons.check_circle_outline),
-                        suffixIcon: _paidDate != null
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () =>
-                                    setState(() => _paidDate = null),
-                              )
+                        labelText: 'Amount (₹)',
+                        prefixIcon: const Icon(Icons.currency_rupee),
+                        helperText: _resolvedPropertyId != null
+                            ? 'Auto-filled from monthly rent — edit to override'
                             : null,
                       ),
-                      child: Text(
-                        _paidDate != null
-                            ? _dateFmt.format(_paidDate!)
-                            : 'Tap to mark as paid',
-                        style:
-                            Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: _paidDate != null
-                                      ? Colors.green.shade700
-                                      : colorScheme.outline,
-                                ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                      validator: Validators.positiveAmount,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Due date picker.
+                    InkWell(
+                      onTap: () => _pickDate(context, isPaidDate: false),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Due Date',
+                          prefixIcon: Icon(Icons.calendar_today_outlined),
+                        ),
+                        child: Text(
+                          _dueDate != null
+                              ? _dateFmt.format(_dueDate!)
+                              : 'Tap to select',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                color: _dueDate != null
+                                    ? null
+                                    : colorScheme.outline,
+                              ),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // Notes.
-                  TextFormField(
-                    controller: _notesController,
-                    decoration: const InputDecoration(
-                      labelText: 'Notes (optional)',
-                      prefixIcon: Icon(Icons.notes_outlined),
+                    // Paid date picker (optional).
+                    InkWell(
+                      onTap: () => _pickDate(context, isPaidDate: true),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Paid Date (optional)',
+                          prefixIcon:
+                              const Icon(Icons.check_circle_outline),
+                          suffixIcon: _paidDate != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () =>
+                                      setState(() => _paidDate = null),
+                                )
+                              : null,
+                        ),
+                        child: Text(
+                          _paidDate != null
+                              ? _dateFmt.format(_paidDate!)
+                              : 'Tap to mark as paid',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                color: _paidDate != null
+                                    ? Colors.green.shade700
+                                    : colorScheme.outline,
+                              ),
+                        ),
+                      ),
                     ),
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 32),
+                    const SizedBox(height: 16),
 
-                  FilledButton(
-                    onPressed: _submit,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 4),
-                      child: Text('Record Payment',
-                          style: TextStyle(fontSize: 16)),
+                    // Notes.
+                    TextFormField(
+                      controller: _notesController,
+                      decoration: const InputDecoration(
+                        labelText: 'Notes (optional)',
+                        prefixIcon: Icon(Icons.notes_outlined),
+                      ),
+                      maxLines: 2,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 32),
+
+                    FilledButton(
+                      onPressed: _isSubmitting ? null : _submit,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Record Payment',
+                                style: TextStyle(fontSize: 16)),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

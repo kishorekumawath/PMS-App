@@ -10,6 +10,7 @@ class PaymentTile extends StatelessWidget {
   final String tenantName;
   final String propertyName;
   final VoidCallback onDelete;
+  final VoidCallback onMarkPaid;
 
   const PaymentTile({
     super.key,
@@ -17,7 +18,12 @@ class PaymentTile extends StatelessWidget {
     required this.tenantName,
     required this.propertyName,
     required this.onDelete,
+    required this.onMarkPaid,
   });
+
+  bool get _canMarkPaid =>
+      payment.status == PaymentStatus.pending ||
+      payment.status == PaymentStatus.overdue;
 
   @override
   Widget build(BuildContext context) {
@@ -25,36 +31,118 @@ class PaymentTile extends StatelessWidget {
 
     return Dismissible(
       key: Key(payment.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
+      // Allow right-swipe only when payment can still be marked as paid.
+      direction: _canMarkPaid
+          ? DismissDirection.horizontal
+          : DismissDirection.endToStart,
+
+      // Right-swipe → Mark as Paid (green).
+      background: _canMarkPaid
+          ? Container(
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 20),
+              decoration: BoxDecoration(
+                color: Colors.green.shade600,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle_outline,
+                      color: Colors.white, size: 28),
+                  SizedBox(height: 4),
+                  Text('Mark Paid',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+            )
+          : const SizedBox.shrink(),
+
+      // Left-swipe → Delete (red).
+      secondaryBackground: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
           color: colorScheme.error,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
-      ),
-      confirmDismiss: (_) => showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Delete Payment'),
-          content: const Text('Delete this payment record? This cannot be undone.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style:
-                  FilledButton.styleFrom(backgroundColor: colorScheme.error),
-              child: const Text('Delete'),
-            ),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.delete_outline, color: Colors.white, size: 28),
+            SizedBox(height: 4),
+            Text('Delete',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600)),
           ],
         ),
       ),
-      onDismissed: (_) => onDelete(),
+
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          // Mark as paid — confirm only if overdue (extra care).
+          if (payment.status == PaymentStatus.overdue) {
+            return await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Mark as Paid'),
+                content: Text(
+                    'Mark this overdue payment of ${CurrencyFormatter.format(payment.amount)} as paid today?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: FilledButton.styleFrom(
+                        backgroundColor: Colors.green.shade600),
+                    child: const Text('Mark Paid'),
+                  ),
+                ],
+              ),
+            );
+          }
+          // Pending — mark directly without dialog.
+          return true;
+        }
+
+        // Delete — always confirm.
+        return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Delete Payment'),
+            content:
+                const Text('Delete this payment record? This cannot be undone.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style:
+                    FilledButton.styleFrom(backgroundColor: colorScheme.error),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        );
+      },
+
+      onDismissed: (direction) {
+        if (direction == DismissDirection.startToEnd) {
+          onMarkPaid();
+        } else {
+          onDelete();
+        }
+      },
+
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         child: Padding(
@@ -91,13 +179,11 @@ class PaymentTile extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           CurrencyFormatter.format(payment.amount),
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.primary,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.primary,
+                                  ),
                         ),
                       ],
                     ),
@@ -119,10 +205,10 @@ class PaymentTile extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           'Due ${DateFormatter.format(payment.dueDate)}',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: colorScheme.outline,
-                                  ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: colorScheme.outline),
                         ),
                       ],
                     ),
@@ -144,16 +230,14 @@ class PaymentTile extends StatelessWidget {
                         ],
                       ),
                     ],
-                    if (payment.notes != null &&
-                        payment.notes!.isNotEmpty) ...[
+                    if (payment.notes != null && payment.notes!.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         payment.notes!,
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.outline,
-                                  fontStyle: FontStyle.italic,
-                                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.outline,
+                              fontStyle: FontStyle.italic,
+                            ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),

@@ -26,6 +26,13 @@ class DeletePaymentEvent extends PaymentEvent {
   List<Object?> get props => [id];
 }
 
+class MarkPaymentAsPaidEvent extends PaymentEvent {
+  final String id;
+  const MarkPaymentAsPaidEvent(this.id);
+  @override
+  List<Object?> get props => [id];
+}
+
 class FilterPayments extends PaymentEvent {
   final PaymentFilter filter;
   const FilterPayments(this.filter);

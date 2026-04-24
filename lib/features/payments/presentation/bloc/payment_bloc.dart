@@ -4,6 +4,7 @@ import '../../../../core/usecases/usecase.dart';
 import '../../domain/entities/payment.dart';
 import '../../domain/usecases/delete_payment.dart';
 import '../../domain/usecases/get_all_payments.dart';
+import '../../domain/usecases/mark_payment_as_paid.dart';
 import '../../domain/usecases/record_payment.dart';
 import 'payment_event.dart';
 import 'payment_state.dart';
@@ -15,6 +16,7 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
   final GetAllPayments _getAll;
   final RecordPayment _record;
   final DeletePayment _delete;
+  final MarkPaymentAsPaid _markPaid;
 
   PaymentFilter _activeFilter = PaymentFilter.all;
 
@@ -22,13 +24,16 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
     required GetAllPayments getAll,
     required RecordPayment record,
     required DeletePayment delete,
+    required MarkPaymentAsPaid markPaid,
   })  : _getAll = getAll,
         _record = record,
         _delete = delete,
+        _markPaid = markPaid,
         super(const PaymentInitial()) {
     on<LoadPayments>(_onLoad);
     on<RecordPaymentEvent>(_onRecord);
     on<DeletePaymentEvent>(_onDelete);
+    on<MarkPaymentAsPaidEvent>(_onMarkPaid);
     on<FilterPayments>(_onFilter);
   }
 
@@ -38,10 +43,15 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
       PaymentFilter.all => all,
       PaymentFilter.paid =>
         all.where((p) => p.status == PaymentStatus.paid).toList(),
-      PaymentFilter.pending =>
-        all.where((p) => p.status == PaymentStatus.pending && !p.dueDate.isBefore(now)).toList(),
-      PaymentFilter.overdue =>
-        all.where((p) => p.status == PaymentStatus.overdue || (p.status == PaymentStatus.pending && p.dueDate.isBefore(now))).toList(),
+      PaymentFilter.pending => all
+          .where((p) =>
+              p.status == PaymentStatus.pending && !p.dueDate.isBefore(now))
+          .toList(),
+      PaymentFilter.overdue => all
+          .where((p) =>
+              p.status == PaymentStatus.overdue ||
+              (p.status == PaymentStatus.pending && p.dueDate.isBefore(now)))
+          .toList(),
     };
   }
 
@@ -77,6 +87,16 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
       DeletePaymentEvent event, Emitter<PaymentState> emit) async {
     try {
       await _delete(event.id);
+      await _reload(emit);
+    } catch (e) {
+      emit(PaymentError(e.toString()));
+    }
+  }
+
+  Future<void> _onMarkPaid(
+      MarkPaymentAsPaidEvent event, Emitter<PaymentState> emit) async {
+    try {
+      await _markPaid(event.id);
       await _reload(emit);
     } catch (e) {
       emit(PaymentError(e.toString()));
